@@ -86,6 +86,10 @@ type ServerConfig struct {
 
 	// InsidersMode indicates if we should enable experimental features.
 	InsidersMode bool
+
+	// CrossOriginProtection configures the SDK's cross-origin request protection.
+	// If nil, the SDK default (reject cross-origin POSTs) is used.
+	CrossOriginProtection *http.CrossOriginProtection
 }
 
 func RunHTTPServer(cfg ServerConfig) error {
@@ -159,6 +163,14 @@ func RunHTTPServer(cfg ServerConfig) error {
 		serverOptions = append(serverOptions, WithScopeFetcher(scopeFetcher))
 	}
 
+	// Bypass cross-origin protection: this server uses bearer tokens, not
+	// cookies, so CSRF checks are unnecessary.
+	if cfg.CrossOriginProtection == nil {
+		p := http.NewCrossOriginProtection()
+		p.AddInsecureBypassPattern("/")
+		cfg.CrossOriginProtection = p
+	}
+
 	r := chi.NewRouter()
 	handler := NewHTTPMcpHandler(ctx, &cfg, deps, t, logger, apiHost, append(serverOptions, WithFeatureChecker(featureChecker), WithOAuthConfig(oauthCfg))...)
 	oauthHandler, err := oauth.NewAuthHandler(oauthCfg, apiHost)
@@ -167,6 +179,8 @@ func RunHTTPServer(cfg ServerConfig) error {
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Use(SetCorsHeaders)
+
 		// Register Middleware First, needs to be before route registration
 		handler.RegisterMiddleware(r)
 

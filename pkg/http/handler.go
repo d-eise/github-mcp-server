@@ -3,11 +3,13 @@ package http
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
 	ghcontext "github.com/github/github-mcp-server/pkg/context"
 	"github.com/github/github-mcp-server/pkg/github"
+	"github.com/github/github-mcp-server/pkg/http/headers"
 	"github.com/github/github-mcp-server/pkg/http/middleware"
 	"github.com/github/github-mcp-server/pkg/http/oauth"
 	"github.com/github/github-mcp-server/pkg/inventory"
@@ -226,7 +228,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
 		return ghServer
 	}, &mcp.StreamableHTTPOptions{
-		Stateless: true,
+		Stateless:             true,
+		CrossOriginProtection: h.config.CrossOriginProtection,
 	})
 
 	mcpHandler.ServeHTTP(w, r)
@@ -411,4 +414,32 @@ func PATScopeFilter(b *inventory.Builder, r *http.Request, fetcher scopes.Fetche
 	}
 
 	return b
+}
+
+// SetCorsHeaders is middleware that sets CORS headers to allow browser-based
+// MCP clients to connect from any origin. This is safe because the server
+// authenticates via bearer tokens (not cookies), so cross-origin requests
+// cannot exploit ambient credentials.
+func SetCorsHeaders(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+		w.Header().Set("Access-Control-Expose-Headers", "Mcp-Session-Id")
+		w.Header().Set("Access-Control-Allow-Headers", fmt.Sprintf(
+			"Content-Type, Authorization, Mcp-Session-Id, Mcp-Protocol-Version, Last-Event-ID, %s, %s, %s, %s, %s, %s",
+			headers.MCPReadOnlyHeader,
+			headers.MCPToolsetsHeader,
+			headers.MCPToolsHeader,
+			headers.MCPExcludeToolsHeader,
+			headers.MCPFeaturesHeader,
+			headers.AuthorizationHeader,
+		))
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
 }
