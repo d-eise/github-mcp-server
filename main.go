@@ -49,8 +49,8 @@ AI assistants and agents.`,
 
 	cmd.Flags().StringVarP(&token, "token", "t", "",
 		"GitHub personal access token (overrides GITHUB_TOKEN env var)")
-	// Default to GHE instance instead of public GitHub API.
-	cmd.Flags().StringVar(&host, "host", "https://github.mycompany.com/api/v3",
+	// Default to public GitHub API; override with --host for GHE instances.
+	cmd.Flags().StringVar(&host, "host", "https://api.github.com",
 		"GitHub API base URL (useful for GitHub Enterprise Server)")
 	cmd.Flags().StringVar(&logFile, "log-file", "",
 		"Path to write structured JSON logs (defaults to stderr)")
