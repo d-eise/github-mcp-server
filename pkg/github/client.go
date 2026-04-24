@@ -1,0 +1,76 @@
+// Package github provides a client for interacting with the GitHub API
+// as part of the github-mcp-server MCP tool implementation.
+package github
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/google/go-github/v57/github"
+	"golang.org/x/oauth2"
+)
+
+// Client wraps the GitHub API client with additional configuration
+// and helper methods used by MCP tool handlers.
+type Client struct {
+	github *github.Client
+	token  string
+}
+
+// NewClient creates a new GitHub API client using the provided personal
+// access token. If token is empty, it falls back to the GITHUB_TOKEN
+// environment variable.
+func NewClient(token string) (*Client, error) {
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
+	if token == "" {
+		return nil, fmt.Errorf("GitHub token is required: set GITHUB_TOKEN environment variable or pass a token")
+	}
+
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+	httpClient := oauth2.NewClient(ctx, ts)
+
+	ghClient := github.NewClient(httpClient)
+
+	return &Client{
+		github: ghClient,
+		token:  token,
+	}, nil
+}
+
+// NewClientWithHTTP creates a new GitHub API client using a custom HTTP client.
+// This is primarily useful for testing with mock transports.
+func NewClientWithHTTP(token string, httpClient *http.Client) *Client {
+	ghClient := github.NewClient(httpClient)
+	return &Client{
+		github: ghClient,
+		token:  token,
+	}
+}
+
+// GitHub returns the underlying go-github client for direct API access.
+func (c *Client) GitHub() *github.Client {
+	return c.github
+}
+
+// GetAuthenticatedUser returns the currently authenticated GitHub user.
+func (c *Client) GetAuthenticatedUser(ctx context.Context) (*github.User, error) {
+	user, _, err := c.github.Users.Get(ctx, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get authenticated user: %w", err)
+	}
+	return user, nil
+}
+
+// ValidateToken checks whether the configured token has valid GitHub API access
+// by making a lightweight authenticated request.
+func (c *Client) ValidateToken(ctx context.Context) error {
+	_, err := c.GetAuthenticatedUser(ctx)
+	return err
+}
