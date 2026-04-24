@@ -52,8 +52,9 @@ AI assistants and agents.`,
 	// Default to public GitHub API; override with --host for GHE instances.
 	cmd.Flags().StringVar(&host, "host", "https://api.github.com",
 		"GitHub API base URL (useful for GitHub Enterprise Server)")
-	cmd.Flags().StringVar(&logFile, "log-file", "",
-		"Path to write structured JSON logs (defaults to stderr)")
+	// Log to a file by default so stdio transport isn't polluted by log output.
+	cmd.Flags().StringVar(&logFile, "log-file", "/tmp/github-mcp-server.log",
+		"Path to write structured JSON logs (defaults to /tmp/github-mcp-server.log)")
 
 	return cmd
 }
