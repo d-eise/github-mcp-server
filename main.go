@@ -52,10 +52,15 @@ AI assistants and agents.`,
 	// Default to public GitHub API; override with --host for GHE instances.
 	cmd.Flags().StringVar(&host, "host", "https://api.github.com",
 		"GitHub API base URL (useful for GitHub Enterprise Server)")
-	// Changed log location to a user-specific path to avoid permission issues
-	// on shared machines where /tmp may not be writable by all users.
-	cmd.Flags().StringVar(&logFile, "log-file", os.Getenv("HOME")+"/.github-mcp-server.log",
-		"Path to write structured JSON logs (defaults to ~/.github-mcp-server.log)")
+	// Use XDG_STATE_HOME if available, otherwise fall back to ~/.local/state,
+	// which is the XDG Base Directory spec preferred location for log files.
+	// This avoids cluttering the home directory root.
+	logDir := os.Getenv("XDG_STATE_HOME")
+	if logDir == "" {
+		logDir = os.Getenv("HOME") + "/.local/state"
+	}
+	cmd.Flags().StringVar(&logFile, "log-file", logDir+"/github-mcp-server.log",
+		"Path to write structured JSON logs (defaults to $XDG_STATE_HOME/github-mcp-server.log)")
 
 	return cmd
 }
