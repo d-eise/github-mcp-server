@@ -23,6 +23,9 @@ type Client struct {
 // access token. If token is empty, it falls back to the GITHUB_TOKEN
 // environment variable. The token can be a classic PAT or a fine-grained
 // personal access token.
+//
+// Note: fine-grained tokens may have restricted scopes; some API endpoints
+// (e.g. listing all repos across orgs) may return 403 depending on permissions.
 func NewClient(token string) (*Client, error) {
 	if token == "" {
 		token = os.Getenv("GITHUB_TOKEN")
@@ -72,6 +75,8 @@ func (c *Client) GetAuthenticatedUser(ctx context.Context) (*github.User, error)
 // ValidateToken checks whether the configured token has valid GitHub API access
 // by making a lightweight authenticated request. Returns a descriptive error
 // if the token is expired, revoked, or lacks sufficient permissions.
+//
+// TODO: consider also checking rate limit headers here to surface quota info.
 func (c *Client) ValidateToken(ctx context.Context) error {
 	_, err := c.GetAuthenticatedUser(ctx)
 	return err
