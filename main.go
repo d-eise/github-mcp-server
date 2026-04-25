@@ -55,6 +55,7 @@ AI assistants and agents.`,
 	// Use XDG_STATE_HOME if available, otherwise fall back to ~/.local/state,
 	// which is the XDG Base Directory spec preferred location for log files.
 	// This avoids cluttering the home directory root.
+	// NOTE: On macOS, XDG_STATE_HOME is often unset; the fallback handles this gracefully.
 	logDir := os.Getenv("XDG_STATE_HOME")
 	if logDir == "" {
 		logDir = os.Getenv("HOME") + "/.local/state"
@@ -92,6 +93,7 @@ func runServer(ctx context.Context, token, host, logFile string) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Print to stderr so it doesn't interfere with MCP stdio transport.
 	fmt.Fprintf(os.Stderr, "github-mcp-server %s starting (stdio transport)\n", Version)
 
 	if err := srv.Serve(ctx); err != nil {
