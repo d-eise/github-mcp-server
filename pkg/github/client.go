@@ -26,6 +26,9 @@ type Client struct {
 //
 // Note: fine-grained tokens may have restricted scopes; some API endpoints
 // (e.g. listing all repos across orgs) may return 403 depending on permissions.
+//
+// Personal note: I prefer fine-grained tokens scoped to specific repos for
+// better security hygiene, even if it means some endpoints are unavailable.
 func NewClient(token string) (*Client, error) {
 	if token == "" {
 		token = os.Getenv("GITHUB_TOKEN")
@@ -77,6 +80,7 @@ func (c *Client) GetAuthenticatedUser(ctx context.Context) (*github.User, error)
 // if the token is expired, revoked, or lacks sufficient permissions.
 //
 // TODO: consider also checking rate limit headers here to surface quota info.
+// TODO: surface the authenticated username in a debug log on success.
 func (c *Client) ValidateToken(ctx context.Context) error {
 	_, err := c.GetAuthenticatedUser(ctx)
 	return err
